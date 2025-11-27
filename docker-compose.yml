@@ -1,9 +1,9 @@
-version: '3.9'
+
 
 services:
   nginx:
     image: nginx:latest
-    container_name: OwnMusicMaker_nginx
+    container_name: ownmusicmaker_nginx
     ports:
       - "80:80"
     volumes:
@@ -17,8 +17,8 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile
-    image: OwnMusicMaker
-    container_name: OwnMusicMaker
+    image: ownmusicmaker
+    container_name: ownmusicmaker
     ports:
       - "8000:8000"      # handig om API ook direct te testen
     volumes:
