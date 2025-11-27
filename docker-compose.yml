@@ -1,22 +1,28 @@
+version: '3.9'
+
 services:
-nginx:
-image: nginx:latest
-ports:
-- "80:80"
-volumes:
-- ./nginx/nginx.conf:/etc/nginx/nginx.conf
-- ./app/uploads:/var/www/uploads
-- ./app/generated:/var/www/generated
-depends_on:
-- api
+  nginx:
+    image: nginx:latest
+    container_name: OwnMusicMaker_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./app/uploads:/var/www/uploads
+      - ./app/generated:/var/www/generated
+    depends_on:
+      - api
 
-
-api:
-build: ./app
-container_name: techno_ai_api
-volumes:
-- ./app/uploads:/app/uploads
-- ./app/generated:/app/generated
-- ./app/checkpoints:/app/checkpoints
-ports:
-- "8000:8000"
+  api:
+    build:
+      context: ./app
+      dockerfile: Dockerfile
+    image: OwnMusicMaker
+    container_name: OwnMusicMaker
+    ports:
+      - "8000:8000"      # handig om API ook direct te testen
+    volumes:
+      - ./app/uploads:/app/uploads
+      - ./app/generated:/app/generated
+      - ./app/checkpoints:/app/checkpoints
+    restart: unless-stopped

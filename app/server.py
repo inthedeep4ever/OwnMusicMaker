@@ -23,3 +23,7 @@ return {"status": "uploaded", "file": file.filename}
 def generate():
 os.system("python generate.py")
 return {"status": "done", "file": "generated/output.wav"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("server:app", host="0.0.0.0", port=8000)
