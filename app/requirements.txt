@@ -1,8 +1,9 @@
 fastapi
 uvicorn
 pydantic
-torchaudio
-torch
 numpy
+torch==2.2.2
+torchaudio==2.2.2
 librosa
+soundfile
 python-multipart
