@@ -7,3 +7,5 @@ torchaudio==2.2.2
 librosa
 soundfile
 python-multipart
+uvicorn[standard]
+scipy
