@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile
-import os, subprocess, shutil
+from fastapi.responses import FileResponse
+import os, shutil, wave, struct
 
 app = FastAPI()
 
@@ -17,14 +18,23 @@ async def upload_wav(file: UploadFile):
 
 @app.get("/api/generate")
 def generate():
-    # safe dummy: create a small silent WAV so you can test end-to-end
     out_path = os.path.join(GENERATED_DIR, "test_output.wav")
-    # generate 1 second of silence with python wave to avoid heavy deps
-    import wave, struct
+
+    # 1 seconde silent WAV
     framerate = 44100
     nframes = framerate
     with wave.open(out_path, "w") as wf:
-        wf.setnchannels(1); wf.setsampwidth(2); wf.setframerate(framerate)
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(framerate)
         frames = b''.join(struct.pack('<h', 0) for _ in range(nframes))
         wf.writeframes(frames)
-    return {"status":"done","file":f"generated/test_output.wav"}
+
+    return FileResponse(out_path, media_type="audio/wav")
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile):
+    filepath = os.path.join(UPLOAD_DIR, file.filename)
+    with open(filepath, "wb") as f:
+        shutil.copyfileobj(file.file, f)
+    return {"status": "uploaded", "file": file.filename}
