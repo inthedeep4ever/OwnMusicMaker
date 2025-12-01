@@ -1,14 +1,10 @@
 numpy<2
-torch
-torchaudio
-fastapi
-uvicorn
-pydantic
-numpy
 torch==2.2.2
 torchaudio==2.2.2
+fastapi
+uvicorn[standard]
+pydantic
 librosa
 soundfile
 python-multipart
-uvicorn[standard]
 scipy
