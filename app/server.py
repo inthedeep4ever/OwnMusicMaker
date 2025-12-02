@@ -53,3 +53,31 @@ def serve_generated(filename: str):
     if not os.path.exists(path):
         return JSONResponse({"error":"not found"}, status_code=404)
     return FileResponse(path, media_type="audio/wav")
+
+
+#___________________________________________
+# filepath: [server.py](http://_vscodecontentref_/10)
+# ...existing code...
+from fastapi import BackgroundTasks
+# ...existing code...
+
+def _do_generate_async(sample_list, out_path, duration_sec):
+    try:
+        generate_mix(sample_list, out_path=out_path, duration_sec=duration_sec)
+    except Exception:
+        # log error; don't crash server
+        import traceback; traceback.print_exc()
+
+@app.post("/api/mix")
+async def api_mix(selection: str = Form(...), duration_sec: int = Form(60), out_name: str = Form(None), background_tasks: BackgroundTasks = None):
+    try:
+        sample_list = json.loads(selection)
+    except:
+        return JSONResponse({"error":"invalid json"}, status_code=400)
+    real_paths = [p if os.path.isabs(p) else os.path.join(PACKS_DIR,p) for p in sample_list]
+    out_name = out_name or f"mix_{uuid.uuid4().hex[:8]}.wav"
+    out_path = os.path.join(GENERATED_DIR, out_name)
+    # schedule background job
+    background_tasks.add_task(_do_generate_async, real_paths, out_path, duration_sec)
+    return {"status": "scheduled", "file": os.path.basename(out_path), "url": f"/generated/{os.path.basename(out_path)}"}
+# ...existing code...
