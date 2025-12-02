@@ -7,6 +7,21 @@ from model import SamplePackMixer
 from dataset import load_mono, SR
 import threading
 
+# Define CHECKPOINT path
+CHECKPOINT = "checkpoints/model.pth"  # adjust to your actual checkpoint location
+
+# limit CPU threads
+torch.set_num_threads(1)
+
+# Load model once
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+model = SamplePackMixer().to(device)
+if os.path.exists(CHECKPOINT):
+    model.load_state_dict(torch.load(CHECKPOINT, map_location=device))
+model.eval()
+
+# ...existing code...
+
 # limit CPU threads to avoid oversubscription (sneller single-job latency)
 torch.set_num_threads(1)
 
