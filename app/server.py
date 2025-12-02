@@ -1,21 +1,14 @@
-from fastapi import FastAPI, UploadFile, File, Form
+# ...existing code...
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 import os, shutil, uuid, json
-from dataset import SamplePackCatalog
+from dataset import SamplePackCatalog, SR
+import torchaudio
 
 from generate import generate_mix
 
 app = FastAPI()
-
-UPLOAD_DIR = "uploads"
-GENERATED_DIR = "generated"
-PACKS_DIR = "packs"
-
-os.makedirs(UPLOAD_DIR, exist_ok=True)
-os.makedirs(GENERATED_DIR, exist_ok=True)
-os.makedirs(PACKS_DIR, exist_ok=True)
-
-catalog = SamplePackCatalog(PACKS_DIR)
+# ...existing code...
 
 @app.post("/api/upload")
 async def upload_file(file: UploadFile = File(...), pack: str = Form(None), category: str = Form(None)):
@@ -28,44 +21,24 @@ async def upload_file(file: UploadFile = File(...), pack: str = Form(None), cate
     filepath = os.path.join(save_dir, filename)
     with open(filepath, "wb") as f:
         shutil.copyfileobj(file.file, f)
+
+    # preprocess: resample to project SR to avoid re-resampling later
+    try:
+        wav, orig_sr = torchaudio.load(filepath)
+        if orig_sr != SR:
+            wav = torchaudio.functional.resample(wav, orig_sr, SR)
+            torchaudio.save(filepath, wav, SR)
+    except Exception:
+        # if resample fails, continue but log (don't crash upload)
+        import traceback; traceback.print_exc()
+
     catalog._build()
     return {"status": "ok", "file": filename, "path": filepath}
-
-@app.get("/api/catalog")
-def api_catalog():
-    return catalog.catalog
-
-@app.post("/api/mix")
-async def api_mix(selection: str = Form(...), duration_sec: int = Form(60), out_name: str = Form(None)):
-    try:
-        sample_list = json.loads(selection)
-    except:
-        return JSONResponse({"error":"invalid json"}, status_code=400)
-    real_paths = [p if os.path.isabs(p) else os.path.join(PACKS_DIR,p) for p in sample_list]
-    out_name = out_name or f"mix_{uuid.uuid4().hex[:8]}.wav"
-    out_path = os.path.join(GENERATED_DIR, out_name)
-    generate_mix(real_paths, out_path=out_path, duration_sec=duration_sec)
-    return {"status": "ok", "file": os.path.basename(out_path), "url": f"/generated/{os.path.basename(out_path)}"}
-
-@app.get("/generated/{filename}")
-def serve_generated(filename: str):
-    path = os.path.join(GENERATED_DIR, filename)
-    if not os.path.exists(path):
-        return JSONResponse({"error":"not found"}, status_code=404)
-    return FileResponse(path, media_type="audio/wav")
-
-
-#___________________________________________
-# filepath: [server.py](http://_vscodecontentref_/10)
-# ...existing code...
-from fastapi import BackgroundTasks
-# ...existing code...
 
 def _do_generate_async(sample_list, out_path, duration_sec):
     try:
         generate_mix(sample_list, out_path=out_path, duration_sec=duration_sec)
     except Exception:
-        # log error; don't crash server
         import traceback; traceback.print_exc()
 
 @app.post("/api/mix")
@@ -77,7 +50,6 @@ async def api_mix(selection: str = Form(...), duration_sec: int = Form(60), out_
     real_paths = [p if os.path.isabs(p) else os.path.join(PACKS_DIR,p) for p in sample_list]
     out_name = out_name or f"mix_{uuid.uuid4().hex[:8]}.wav"
     out_path = os.path.join(GENERATED_DIR, out_name)
-    # schedule background job
     background_tasks.add_task(_do_generate_async, real_paths, out_path, duration_sec)
     return {"status": "scheduled", "file": os.path.basename(out_path), "url": f"/generated/{os.path.basename(out_path)}"}
 # ...existing code...
